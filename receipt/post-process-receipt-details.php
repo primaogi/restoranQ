@@ -2,7 +2,9 @@
 
 include("../config/database.php");
 
-$sql = "SELECT id, name FROM categories";
+$sql = "SELECT c.id, c.name, rd.note, rd.price, rd.amount
+FROM categories c
+JOIN receipt_details rd ON c.id = receipt_details.id";
 $result = mysqli_query($db, $sql);
 $categories_list = mysqli_fetch_all($result, MYSQLI_ASSOC);
 
@@ -12,14 +14,16 @@ if (isset($_POST['submit'])) {
     $categories = $_POST['category_id'];
     $note = $_POST['note'];
     $price = $_POST['price'];
-    $status = $_POST['status'];
+    $price = $_POST['amount'];
+    $total = $_POST['total'];
     try
     {
         if($id){
-        $sql = "UPDATE menus SET name='$name', category_id='$categories', note='$note', price='$price', status='$status' WHERE id=$id";
+        $sql = "UPDATE receipt_details SET name='$name', category_id='$categories', note='$note', price='$price',
+                amount='$amount', total='$total' WHERE id=$id";
     }else {
-    $sql = "INSERT INTO menus(name, category_id, note, price, status) VALUES ('$name', '$categories', 
-            '$note', '$price', '$status')";
+    $sql = "INSERT INTO menus(name, category_id, note, price, amount, total) VALUES ('$name', '$categories', 
+            '$note', '$price', '$amount', '$total')";
     
     }
     $result = mysqli_query($db, $sql);

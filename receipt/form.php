@@ -4,11 +4,12 @@ include("../layout/header.php");
 $id = isset($_GET['id']) ? $_GET['id'] : 0;
 
 $sql = "SELECT * FROM receipts WHERE id=$id";
+
 $result = mysqli_query($db, $sql);
 $receipts = $result->num_rows > 0 ? mysqli_fetch_assoc($result) : null;
 
 // Query untuk mengambil data kategori
-$category_query = mysqli_query($db, "SELECT * FROM categories");
+$menus_query = mysqli_query($db, "SELECT * FROM menus");
 $receipt_query = mysqli_query($db, "SELECT status FROM receipts");
 ?>
 
@@ -53,14 +54,14 @@ $receipt_query = mysqli_query($db, "SELECT status FROM receipts");
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
-                <form action="process_receipt.php" method="post">
+                <form action="post-process-receipt-details.php" method="post">
                     <div class="mb-3">
                         <label for="menu" class="form-label">Menu Category</label>
                         <select name="category_id" class="form-control">
                             <?php
-                            while ($category = mysqli_fetch_assoc($category_query)) {
-                                $selected = ($menus && $menus['category_id'] == $category['id']) ? 'selected' : '';
-                                echo "<option value='{$category['id']}' $selected>{$category['name']}</option>";
+                            while ($menus = mysqli_fetch_assoc($menus_query)) {
+                                $selected = ($menus && $menus['category_id'] == $menus['id']) ? 'selected' : '';
+                                echo "<option value='{$menus['id']}' $selected>{$menus['name']} ({$menus['price']})</option>";
                             }
                             ?>
                         </select>
@@ -73,8 +74,7 @@ $receipt_query = mysqli_query($db, "SELECT status FROM receipts");
                         <label for="note" class="form-label">Note</label>
                         <textarea class="form-control" id="note" name="note"></textarea>
                     </div>
-                    <!-- Add other fields as needed -->
-                    <button type="submit" class="btn btn-primary">Save</button>
+                    <button type="submit" class="btn btn-primary"><?= $id ? "Update" : "Save"; ?></button>
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
                 </form>
             </div>
@@ -98,7 +98,7 @@ $receipt_query = mysqli_query($db, "SELECT status FROM receipts");
     <tbody>
         <?php
         $i = 1;
-        while ($user = mysqli_fetch_array($result)) {
+        while ($receipts_details = mysqli_fetch_array($result)) {
         ?>
             <tr>
                 <td><?= $i; ?></td>
