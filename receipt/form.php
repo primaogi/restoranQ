@@ -1,128 +1,136 @@
-<?php
-include("../layout/header.php");
-
+<?php include("../layout/header.php");
 $id = isset($_GET['id']) ? $_GET['id'] : 0;
 
 $sql = "SELECT * FROM receipts WHERE id=$id";
-
 $result = mysqli_query($db, $sql);
-$receipts = $result->num_rows > 0 ? mysqli_fetch_assoc($result) : null;
+$receipt = $result->num_rows > 0 ? mysqli_fetch_assoc($result) : null;
 
-// Query untuk mengambil data kategori
-$menus_query = mysqli_query($db, "SELECT * FROM menus");
-$receipt_query = mysqli_query($db, "SELECT status FROM receipts");
+
+$sql = "SELECT rcp_det.*, (rcp_det.price * rcp_det.amount) as subtotal, menus.name as menu_name, cat.name as category_name FROM receipt_details as rcp_det inner join menus on rcp_det.menu_id=menus.id inner join categories as cat on menus.category_id = cat.id WHERE receipt_id=$id";
+$receipt_details = mysqli_query($db, $sql);
+
+$sql = "SELECT * FROM menus";
+$menus = mysqli_query($db, $sql);
+
 ?>
 
-<h2><?= $id ? "Edit" : "Add"; ?> Receipts</h2>
+<h1 class="mb-5"><?= $id ? "Update" : "Add"; ?> Receipt</h1>
+<?php
+    if(isset($_GET["error"])) :  ?>
+<div class="alert alert-warning alert-dismissible fade show" role="alert">
+    <strong><?= $_GET["error"]; ?></strong>
+</div>
+<?php endif;
+if(isset($_GET["success"])) :
+    ?>
+<div class="alert alert-success alert-dismissible fade show" role="alert">
+    <strong><?= $_GET["success"]; ?></strong>
+</div>
+<?php endif;?>
 
-<form action="post-process.php" method="POST">
+<form method="post" action="receipt-post-process.php">
     <div class="row">
         <input type="hidden" name="id" value="<?= $id; ?>">
         <div class="col-md-6">
             <div class="mb-3">
-                <label for="name" class="form-label">Name</label>
-                <input type="text" class="form-control" name="name" value="<?= $receipts ? $receipts['name'] : ''; ?>" required>
+                <label for="customer_name" class="form-label">Nama</label>
+                <input type="text" class="form-control" name="customer_name"
+                    value="<?= $receipt ? $receipt['customer_name'] : "" ; ?>" required>
             </div>
             <div class="mb-3">
                 <label for="status" class="form-label">Status</label>
                 <select name="status" class="form-control">
-                    <option value="Done" <?= ($receipts && $receipts['status'] == 'Done') ? 'selected' : ''; ?>>Done</option>
+                    <option value="Entry" <?= $receipt && $receipt['status'] == "Entry" ? "selected" : "" ; ?>>Entry
+                    </option>
+                    <?php if($receipt && $receipt_details->num_rows > 0) : ?>
+                    <option value="Done" <?= $receipt && $receipt['status'] == "Done" ? "selected" : "" ; ?>>Done
+                    </option>
+                    <?php endif; ?>
                 </select>
             </div>
-        </div>
-    </div>
-    <div class="row">
-        <div class="col-md-12">
-            <button type="submit" name="submit" class="btn btn-primary"><?= $id ? "Update" : "Submit"; ?></button>
+            <button type="submit" name="submit" class="btn btn-primary">Submit</button>
             <a href="index.php" class="btn btn-secondary">Cancel</a>
         </div>
     </div>
 </form>
-<div class="container text-center mt-5">
-    <h1 class="display-4">Receipt Details</h1>
-</div>
-<a href="form.php" class="btn btn-primary mb-3" data-bs-toggle="modal" data-bs-target="#receiptModal">
-    <i class="bi bi-person-fill-add"></i> Add
-</a>
 
-<!-- Modal -->
-<div class="modal fade" id="receiptModal" tabindex="-1" aria-labelledby="receiptModalLabel" aria-hidden="true">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="receiptModalLabel">Add Receipt Details</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body">
-                <form action="post-process-receipt-details.php" method="post">
-                    <div class="mb-3">
-                        <label for="menu" class="form-label">Menu Category</label>
-                        <select name="category_id" class="form-control">
-                            <?php
-                            while ($menus = mysqli_fetch_assoc($menus_query)) {
-                                $selected = ($menus && $menus['category_id'] == $menus['id']) ? 'selected' : '';
-                                echo "<option value='{$menus['id']}' $selected>{$menus['name']} ({$menus['price']})</option>";
-                            }
-                            ?>
-                        </select>
-                    </div>
-                    <div class="mb-3">
-                        <label for="amount" class="form-label">Amount (Qty)</label>
-                        <input type="number" class="form-control" id="amount" name="amount" required>
-                    </div>
-                    <div class="mb-3">
-                        <label for="note" class="form-label">Note</label>
-                        <textarea class="form-control" id="note" name="note"></textarea>
-                    </div>
-                    <button type="submit" class="btn btn-primary"><?= $id ? "Update" : "Save"; ?></button>
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                </form>
-            </div>
-        </div>
-    </div>
-</div>
+<?php if($receipt) : ?>
+<hr />
+<h2>Details</h2>
 
-<table id="my-datatables" class="table table-striped table-bordered table-responsive">
-    <thead>
-        <tr>
-            <th>No</th>
-            <th>Name</th>
-            <th>Category</th>
-            <th>Note</th>
-            <th>Price</th>
-            <th>Amount</th>
-            <th>Subtotal</th>
-            <th class="col-md-2">Action</th>
-        </tr>
-    </thead>
-    <tbody>
-        <?php
-        $i = 1;
-        while ($receipts_details = mysqli_fetch_array($result)) {
+<!-- Button trigger modal -->
+<button type="button" class="btn btn-primary my-3" data-bs-toggle="modal" data-bs-target="#detailFormModal">
+    Add
+</button>
+
+
+<div class="table-responsive">
+    <table class="table table-striped table-bordered" style="width:100%">
+        <thead>
+            <tr>
+                <th scope="col">#</th>
+                <th scope="col">Name</th>
+                <th scope="col">Category</th>
+                <th scope="col">Note</th>
+                <th scope="col">Price</th>
+                <th scope="col">Amount</th>
+                <th scope="col">Subtotal</th>
+                <th scope="col" width="10%">Action</th>
+            </tr>
+        </thead>
+        <tbody>
+            <?php
+            $i = 1;
+    $total = 0;
+    while ($receipt_detail = mysqli_fetch_array($receipt_details)) {
         ?>
             <tr>
                 <td><?= $i; ?></td>
-                <td><?= $receipts_details['customer_name']; ?></td>
-                <td><?= $receipts_details['category_name']; ?></td>
-                <td><?= $receipts_details['note']; ?></td>
-                <td><?= $receipts_details['price']; ?></td>
-                <td><?= $receipts_details['amount']; ?></td>
-                <td><?= $receipts_details['total']; ?></td>
+                <td><?= $receipt_detail['menu_name']; ?></td>
+                <td><?= $receipt_detail['category_name']; ?></td>
+                <td><?= $receipt_detail['note']; ?></td>
+                <td class="text-end"><?= number_format($receipt_detail['price'], 0, '.', '.'); ?></td>
+                <td class="text-end"><?= number_format($receipt_detail['amount'], 0, '.', '.'); ?></td>
+                <td class="text-end"><?= number_format($receipt_detail['subtotal'], 0, '.', '.'); ?></td>
                 <td>
-                    <div class="d-flex">
-                        <a href="form.php?id=<?= $user["id"]; ?>" class="btn btn-sm btn-warning me-2">Edit</a>
-                        <form action="delete-process.php" method="post">
-                            <input type="hidden" name="id" value="<?= $user["id"]; ?>">
-                            <button type="submit" name="submit" onclick="return confirm('Anda yakin menghapus data ini?');" class="btn btn-danger btn-sm">Delete</button>
+                    <div class="d-flex justify-content-center">
+                        <button type="button" class="btn btn-primary me-1 btn-sm" data-bs-toggle="modal"
+                            onclick="editModalShow('<?= $receipt_detail['id']; ?>','<?= $receipt_detail['menu_id']; ?>','<?= $receipt_detail['note']; ?>','<?= $receipt_detail['amount']; ?>')"
+                            data-bs-target="#detailFormModal">
+                            Edit
+                        </button>
+                        <form action="detail-delete-process.php" method="post">
+                            <input type="hidden" name="id" value="<?=  $receipt_detail["id"]; ?>">
+                            <input type="hidden" name="receipt_id" value="<?= $id; ?>">
+                            <button type="submit" name="submit"
+                                onclick="return confirm('Anda yakin menghapus data ini?');"
+                                class="btn btn-danger btn-sm">Delete</button>
                         </form>
                     </div>
                 </td>
             </tr>
-        <?php $i++;
-        } ?>
-    </tbody>
-</table>
+            <?php
+            $i++;
+        $total += $receipt_detail['subtotal'];
+    }
+    ?>
+            <tr>
+                <td></td>
+                <td></td>
+                <td></td>
+                <td></td>
+                <td></td>
+                <td></td>
+                <td class="text-end"><b><?= number_format($total, 0, '.', '.'); ?></b></td>
+                <td></td>
+            </tr>
+        </tbody>
+    </table>
+</div>
 
-<?php
-include("../layout/footer.php");
-?>
+<?php include("modal-form.php"); ?>
+
+<?php endif; ?>
+
+
+<?php include("../layout/footer.php"); ?>
